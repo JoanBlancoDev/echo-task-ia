@@ -7,7 +7,7 @@ Un Micro-SaaS que captura notas de voz y las convierte en tickets técnicos estr
 ## Stack Tecnológico
 
 - **Runtime:** Bun (priorizar comandos `bun` y `bunx`).
-- **Framework:** Next.js 15 (App Router) + React 19.
+- **Framework:** Next.js 16 (App Router) + React 19.
 - **UI:** Tailwind CSS + shadcn/ui.
 - **ORM:** Prisma (PostgreSQL en Supabase).
 - **Auth & Storage:** Supabase Auth y Supabase Storage.
@@ -36,6 +36,6 @@ Entiende este contexto para asistirme en la creación de componentes, esquemas d
 1. Cliente: Graba audio -> Sube a Supabase Storage.
 2. Cliente: Llama a Server Action con la `audio_url`.
 3. Servidor: Server Action descarga buffer de audio de Supabase.
-4. Servidor: Envía buffer a Gemini 1.5 Flash con System Prompt.
+4. Servidor: Envía buffer a Gemini 2.5 Flash con System Prompt.
 5. Servidor: Valida JSON con Zod y guarda en DB vía Prisma.
 6. Cliente: Revalida ruta y muestra el ticket generado.

@@ -1,0 +1,1 @@
+// Deprecated: la acción se movió a actions/tasks/get-dashboard-tasks.ts

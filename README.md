@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EchoTask AI
 
-## Getting Started
+Micro-SaaS para capturar notas de voz y convertirlas en tickets técnicos estructurados con IA.
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + React + TypeScript
+- Tailwind CSS + shadcn/ui
+- Prisma + PostgreSQL (Supabase)
+- Supabase Auth + Storage
+- Gemini (Google Generative AI)
+- Zod para validación de salida IA
+
+## Flujo principal
+
+1. Usuario graba audio desde dashboard.
+2. Cliente envía `FormData` con audio a Server Action.
+3. Servidor sube audio a Supabase Storage.
+4. Servidor procesa el buffer con Gemini.
+5. Respuesta de IA se valida con Zod.
+6. Se crea `Task` en Prisma.
+7. Dashboard refresca y muestra ticket.
+
+## Requisitos
+
+- Bun instalado (`bun --version`)
+- Proyecto Supabase (DB + Auth + Storage)
+- API key de Gemini habilitada
+
+## Setup local
+
+1. Instalar dependencias:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
+```
+
+2. Crear variables de entorno desde plantilla:
+
+```bash
+cp .env.example .env
+```
+
+3. Completar `.env`:
+
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_BUCKET` (ej: `task-audios`)
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` (recomendado: `gemini-2.5-flash`)
+- `NEXT_PUBLIC_APP_URL` (ej: `http://localhost:3000`)
+
+4. Prisma:
+
+```bash
+bunx prisma generate
+bunx prisma migrate dev
+```
+
+5. Ejecutar proyecto:
+
+```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase mínimo requerido
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Auth habilitado.
+- Bucket de storage creado (por defecto `task-audios`).
+- Políticas de acceso coherentes con upload/download desde servidor.
 
-## Learn More
+## UX y feedback actual
 
-To learn more about Next.js, take a look at the following resources:
+- Error de micrófono (permiso/navegador) en el componente de grabación.
+- Error de Storage/Session/Audio inválido con mensaje persistente y toast.
+- Advertencia de IA (Gemini) con fallback automático de task.
+- Éxito confirmado en UI y refresh del dashboard.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Troubleshooting
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### No sube el audio
 
-## Deploy on Vercel
+- Verifica `SUPABASE_STORAGE_BUCKET`.
+- Revisa `SUPABASE_SERVICE_ROLE_KEY`.
+- Confirma existencia del bucket en Supabase.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Gemini falla o sin cuota
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Verifica `GEMINI_API_KEY`.
+- Confirma billing/cuota en Google AI Studio.
+- Ajusta `GEMINI_MODEL` a un modelo disponible.
+
+### Error de sesión
+
+- Cierra sesión y vuelve a autenticar.
+- Verifica variables de Supabase cliente (`NEXT_PUBLIC_*`).
+
+## Seguridad (importante)
+
+- `.env*` está ignorado por git.
+- Nunca commitear claves reales.
+- Si una clave se expuso, rotarla inmediatamente (Supabase + Gemini).
+- Ver [SECURITY_ROTATION.md](SECURITY_ROTATION.md).
+
+## Próximos pasos
+
+Ver [PLANNER.md](PLANNER.md).

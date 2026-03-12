@@ -1,63 +1,10 @@
 import { Priority } from "@prisma/client"
-import { redirect } from "next/navigation"
 
 import { DashboardRecorder } from "@/components/dashboard/DashboardRecorder"
 import { DashboardTopBar } from "@/components/dashboard/DashboardTopBar"
 import { TaskCard } from "@/components/dashboard/TaskCard"
-import { db } from "@/lib/db"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { createSignedStorageUrl } from "@/lib/supabase/storage"
+import { getDashboardTasks } from "@/actions/tasks/get-dashboard-tasks"
 
-async function getDashboardTasks() {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/login")
-  }
-
-  const localUser = await db.user.upsert({
-    where: { externalId: user.id },
-    update: {
-      email: user.email ?? `user-${user.id}@placeholder.local`,
-      name: user.user_metadata?.name ?? null,
-      avatarUrl: user.user_metadata?.avatar_url ?? null,
-    },
-    create: {
-      externalId: user.id,
-      email: user.email ?? `user-${user.id}@placeholder.local`,
-      name: user.user_metadata?.name ?? null,
-      avatarUrl: user.user_metadata?.avatar_url ?? null,
-    },
-    select: { id: true },
-  })
-
-  const tasks = await db.task.findMany({
-    where: { userId: localUser.id },
-    orderBy: { createdAt: "desc" },
-    take: 12,
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      category: true,
-      priority: true,
-      status: true,
-      audioUrl: true,
-    },
-  })
-
-  const tasksWithPlayback = await Promise.all(
-    tasks.map(async (task) => ({
-      ...task,
-      audioPlaybackUrl: task.audioUrl ? await createSignedStorageUrl(task.audioUrl) : null,
-    }))
-  )
-
-  return tasksWithPlayback
-}
 
 const priorityOrder: Record<Priority, number> = {
   URGENT: 0,
@@ -73,7 +20,7 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-6 py-10 md:px-8">
       <DashboardTopBar
-        title="Main Dashboard"
+        title="Dashboard"
         subtitle="Graba una nota de voz y visualiza los tickets procesados por prioridad."
       />
 

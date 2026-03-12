@@ -83,43 +83,72 @@ export function RecordButton({ onRecorded, disabled = false }: RecordButtonProps
     }
   }
 
+
   const handleStop = () => {
     const recorder = mediaRecorderRef.current
     if (!recorder || recorder.state === "inactive") {
       return
     }
-
     recorder.stop()
     setIsRecording(false)
   }
+
+  // Nueva función para cancelar la grabación y descartar el audio
+  const handleCancel = () => {
+    const recorder = mediaRecorderRef.current
+    if (recorder && recorder.state !== "inactive") {
+      recorder.ondataavailable = null // Evita que se acumulen blobs
+      recorder.onstop = null
+      recorder.stop()
+    }
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+    startedAtRef.current = null
+    chunksRef.current = []
+    setIsRecording(false)
+    setErrorMessage(null)
+  }
+
 
   const handleToggleRecording = async () => {
     if (isRecording) {
       handleStop()
       return
     }
-
     await handleStart()
   }
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <Button
-        type="button"
-        size="lg"
-        onClick={handleToggleRecording}
-        disabled={!isSupported || disabled}
-        className={cn(
-          "h-16 min-w-52 rounded-full px-8 text-base font-semibold transition-all",
-          isRecording
-            ? "bg-destructive text-white hover:bg-destructive/90 shadow-lg shadow-destructive/25 animate-pulse"
-            : "bg-primary text-primary-foreground hover:bg-primary/90"
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleToggleRecording}
+          disabled={!isSupported || disabled}
+          className={cn(
+            "h-16 min-w-52 rounded-full px-8 text-base font-semibold transition-all bg-indigo-600 text-white hover:bg-indigo-700",
+            isRecording
+              ? "bg-indigo-600/50 text-white hover:bg-indigo-600/90 shadow-lg shadow-destructive/25 animate-pulse"
+              : "bg-indigo-600 text-white hover:bg-indigo-700"
+          )}
+        >
+          {isRecording ? <Square className="size-5" /> : <Mic className="size-5" />}
+          {isRecording ? "Grabando" : "Iniciar grabación"}
+        </Button>
+        {isRecording && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            onClick={handleCancel}
+            className="h-16 rounded-full px-6 text-base font-semibold"
+          >
+            Cancelar
+          </Button>
         )}
-      >
-        {isRecording ? <Square className="size-5" /> : <Mic className="size-5" />}
-        {isRecording ? "Detener grabación" : "Iniciar grabación"}
-      </Button>
-
+      </div>
+      {isRecording && <span className="text-xs text-muted-foreground">Grabando...</span>}
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
     </div>
   )

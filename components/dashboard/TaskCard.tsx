@@ -10,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 interface TaskCardProps {
   id: string
   title: string
-  description: string
+  description?: string | null
   category?: string | null
   priority: Priority
   status: Status
@@ -40,7 +40,7 @@ export function TaskCard({ id, title, description, category, priority, status, a
 
       <CardFooter>
         <div className="flex w-full flex-col gap-2">
-          <Button asChild variant="outline" className="w-full">
+          <Button asChild className="w-full bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer">
             <Link href={`/dashboard/tasks/${id}`}>Ver ticket</Link>
           </Button>
 

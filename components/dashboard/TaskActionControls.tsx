@@ -4,7 +4,8 @@ import { Status } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
-import { deleteTaskAction, reprocessTaskAction } from "@/actions/tasks/task-actions"
+import { deleteTaskAction } from "@/actions/tasks/delete-task-action"
+import { reprocessTaskAction } from "@/actions/tasks/reprocess-task-action"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
 

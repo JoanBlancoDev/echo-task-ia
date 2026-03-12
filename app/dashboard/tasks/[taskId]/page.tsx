@@ -63,7 +63,7 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-10 md:px-8">
-      <DashboardTopBar title="Detalle del ticket" backHref="/dashboard" backLabel="Volver al dashboard" />
+      <DashboardTopBar title="Detalle del ticket" backHref="/dashboard" backLabel="Volver" />
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">

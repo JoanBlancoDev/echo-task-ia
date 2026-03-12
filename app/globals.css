@@ -1,3 +1,21 @@
+@keyframes bounce-vertical {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-40px);
+  }
+  50% {
+    transform: translateY(60px);
+  }
+  80% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-bounce-vertical {
+  animation: bounce-vertical 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 @import "tailwindcss";
 @import "tw-animate-css";
 

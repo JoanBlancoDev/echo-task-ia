@@ -1,7 +1,13 @@
 "use client"
 
 import { ToastProvider } from "@/components/ui/toast"
+import { ThemeProvider } from "./ThemeProvider"
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
-  return <ToastProvider>{children}</ToastProvider>
+  return (
+
+    <ThemeProvider attribute={'class'} defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ToastProvider>{children}</ToastProvider>
+    </ThemeProvider>
+  )
 }
