@@ -8,6 +8,8 @@
 
 ## P1 – Importantes
 
+- [x] Agregar Sidebar Componente custom para los items de toda la app.
+- [ ] Agregar validación a campos de formularios y Expresiones Regulares.
 - [ ] Agregar tests unitarios para server actions y validación Zod.
 - [ ] Agregar tests E2E para el flujo de grabación y creación de task.
 - [ ] Mejorar accesibilidad (focus, aria-labels, contraste en dark mode).

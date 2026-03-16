@@ -3,14 +3,15 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { emailSchema, passwordSchema } from "@/lib/auth/password-policy";
 
 export type AuthActionState = {
   error: string | null;
 };
 
 const loginSchema = z.object({
-  email: z.email("Email inválido").trim(),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  email: emailSchema(),
+  password: passwordSchema(),
 });
 
 // Server Action para login

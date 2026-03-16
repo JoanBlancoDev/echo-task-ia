@@ -3,12 +3,13 @@
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AuthActionState } from "@/actions/auth/login-action";
+import { PASSWORD_MIN_LENGTH, emailSchema, passwordSchema } from "@/lib/auth/password-policy";
 
 const signupSchema = z
   .object({
-    email: z.email("Email inválido"),
-    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
-    confirmPassword: z.string().min(6, "Confirma tu contraseña"),
+    email: emailSchema(),
+    password: passwordSchema(),
+    confirmPassword: z.string().min(PASSWORD_MIN_LENGTH, "Confirma tu contraseña"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],
