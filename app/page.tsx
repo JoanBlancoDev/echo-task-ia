@@ -10,6 +10,9 @@ const sidebarItems: SideBarItem[] = [
   { label: 'Login', href: '/login' },
   { label: 'Signup', href: '/signup' },
 ]
+const sidebarItemsAuthenticated: SideBarItem[] = [
+  { label: 'Dashboard', href: '/dashboard' },
+]
 
 
 export default async function Home() {
@@ -18,7 +21,7 @@ export default async function Home() {
   return (
 
     <>
-      <AppSideBar items={sidebarItems} mobileOnly />
+      <AppSideBar items={accessToken ? sidebarItemsAuthenticated : sidebarItems} mobileOnly />
       <main className="flex min-h-screen flex-col">
         <header className="w-full">
           <nav className="w-full max-w-7xl px-8 py-6 flex justify-between items-center mx-auto flex-wrap gap-4">
@@ -44,9 +47,16 @@ export default async function Home() {
                   </div>
                 </>
               ) : (
-                <div className="flex-1">
-                  <Link className="flex-1 px-4 py-2 rounded-md outline-2 outline-zinc-900 dark:outline-zinc-300 font-semibold text-zinc-700 dark:text-zinc-100 lg:hover:opacity-80 transition-opacity ease-in-out cursor-pointer" href={'/dashboard'}>Dashboard</Link>
-                </div>
+                <>
+                  <div className="flex md:hidden items-center justify-end gap-12 flex-1">
+                    <ModeToggle />
+                    <SidebarTrigger className="flex md:hidden" />
+                  </div>
+                  <div className="hidden md:flex gap-12 items-center flex-1 justify-end">
+                    <ModeToggle />
+                    <Link className="px-4 py-2 rounded-md outline-2 outline-zinc-900 dark:outline-zinc-300 font-semibold text-zinc-700 dark:text-zinc-100 lg:hover:opacity-80 transition-opacity ease-in-out cursor-pointer" href={'/dashboard'}>Dashboard</Link>
+                  </div>
+                </>
               )
             }
 

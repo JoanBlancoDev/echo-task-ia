@@ -2,7 +2,7 @@
 
 import { Status } from "@prisma/client"
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 
 import { deleteTaskAction } from "@/actions/tasks/delete-task-action"
 import { reprocessTaskAction } from "@/actions/tasks/reprocess-task-action"
@@ -26,6 +26,45 @@ export function TaskActionControls({
   const [isPending, startTransition] = useTransition()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const { pushToast, pushError } = useToast()
+
+  // Focus trap: referencia al primer botón enfocable del modal
+  const cancelBtnRef = useRef<HTMLButtonElement>(null)
+  const confirmBtnRef = useRef<HTMLButtonElement>(null)
+
+  // Al abrir el modal, mover el foco al botón de cancelar
+  useEffect(() => {
+    if (isDeleteModalOpen) {
+      cancelBtnRef.current?.focus()
+    }
+  }, [isDeleteModalOpen])
+
+  // Focus trap: tab/shift-tab quedan dentro del modal
+  const handleModalKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      setIsDeleteModalOpen(false)
+      return
+    }
+
+    if (e.key !== "Tab") return
+
+    const focusable = [cancelBtnRef.current, confirmBtnRef.current].filter(Boolean) as HTMLButtonElement[]
+    if (focusable.length < 2) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+  }
 
   const handleReprocess = () => {
     startTransition(async () => {
@@ -67,8 +106,9 @@ export function TaskActionControls({
           className="w-full"
           disabled={status !== "PENDING" || isPending}
           onClick={handleReprocess}
+          aria-label={status !== "PENDING" ? "Reprocesar (solo disponible en tasks pendientes)" : "Reprocesar task con Gemini"}
         >
-          Reprocesar
+          {status === 'COMPLETED' ? 'Reprocesado' : 'Reprocesar'}
         </Button>
         <Button
           type="button"
@@ -76,24 +116,46 @@ export function TaskActionControls({
           className="w-full"
           disabled={isPending}
           onClick={() => setIsDeleteModalOpen(true)}
+          aria-label="Eliminar task"
         >
           Eliminar
         </Button>
       </div>
 
       {isDeleteModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+          aria-describedby="delete-dialog-description"
+          onKeyDown={handleModalKeyDown}
+        >
           <div className="w-full max-w-md rounded-lg border bg-card p-5 shadow-xl">
-            <h3 className="text-base font-semibold">Confirmar eliminación</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <h3 id="delete-dialog-title" className="text-base font-semibold">
+              Confirmar eliminación
+            </h3>
+            <p id="delete-dialog-description" className="mt-2 text-sm text-muted-foreground">
               Esta acción eliminará la task y su audio asociado. No se puede deshacer.
             </p>
 
             <div className="mt-5 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)} disabled={isPending}>
+              <Button
+                ref={cancelBtnRef}
+                type="button"
+                variant="outline"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isPending}
+              >
                 Cancelar
               </Button>
-              <Button type="button" variant="destructive" onClick={handleDelete} disabled={isPending}>
+              <Button
+                ref={confirmBtnRef}
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isPending}
+              >
                 Confirmar eliminar
               </Button>
             </div>

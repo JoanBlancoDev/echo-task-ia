@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 
 import { extractTaskFromAudioWithGemini } from "@/lib/ai/task-from-audio"
 import { db } from "@/lib/db"
+import { checkRateLimit, getRateLimitErrorMessage } from "@/lib/rate-limit"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { getCurrentLocalUserId, parseStorageUrl, toUserFriendlyError } from "./task-utils"
 
@@ -21,6 +22,17 @@ export async function reprocessTaskAction(taskId: string): Promise<TaskActionRes
       return { ok: false, error: "Sesión inválida" }
     }
 
+    const reprocessRateLimit = await checkRateLimit({
+      bucket: "reprocess-task",
+      limit: 5,
+      window: "1 m",
+      identifier: localUserId,
+    })
+
+    if (!reprocessRateLimit.success) {
+      return { ok: false, error: getRateLimitErrorMessage(reprocessRateLimit.reset) }
+    }
+
     const task = await db.task.findFirst({
       where: {
         id: taskId,
@@ -29,11 +41,18 @@ export async function reprocessTaskAction(taskId: string): Promise<TaskActionRes
       select: {
         id: true,
         audioUrl: true,
+        status: true,
       },
     })
 
     if (!task || !task.audioUrl) {
       return { ok: false, error: "Task sin audio para reprocesar" }
+    }
+
+    // Validación server-side: solo tasks PENDING pueden reprocesarse
+    // (no confiar únicamente en el disabled del botón en UI)
+    if (task.status !== "PENDING") {
+      return { ok: false, error: "Solo las tasks pendientes pueden reprocesarse" }
     }
 
     const parsedUrl = parseStorageUrl(task.audioUrl)

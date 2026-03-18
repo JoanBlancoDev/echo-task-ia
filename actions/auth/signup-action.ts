@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AuthActionState } from "@/actions/auth/login-action";
 import { PASSWORD_MIN_LENGTH, emailSchema, passwordSchema } from "@/lib/auth/password-policy";
+import { checkRateLimit, getRateLimitErrorMessage, getRequestIp } from "@/lib/rate-limit";
 
 const signupSchema = z
   .object({
@@ -26,6 +27,18 @@ export async function signupAction(_: AuthActionState, formData: FormData): Prom
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  const requestIp = await getRequestIp();
+  const signupRateLimit = await checkRateLimit({
+    bucket: "auth-signup",
+    limit: 5,
+    window: "1 h",
+    identifier: `${parsed.data.email.toLowerCase()}:${requestIp}`,
+  });
+
+  if (!signupRateLimit.success) {
+    return { error: getRateLimitErrorMessage(signupRateLimit.reset) };
   }
 
   const supabase = await createSupabaseServerClient();

@@ -32,12 +32,23 @@ const statusBadgeClass: Record<Status, string> = {
 }
 
 export function PriorityBadge({ priority }: { priority: Priority }) {
-  return <Badge className={cn("font-semibold", priorityBadgeClass[priority])}>{priorityLabels[priority]}</Badge>
+  return (
+    <Badge
+      className={cn("font-semibold", priorityBadgeClass[priority])}
+      aria-label={`Prioridad: ${priorityLabels[priority]}`}
+    >
+      {priorityLabels[priority]}
+    </Badge>
+  )
 }
 
 export function StatusBadge({ status }: { status: Status }) {
   return (
-    <Badge variant="outline" className={cn("w-fit", statusBadgeClass[status])}>
+    <Badge
+      variant="outline"
+      className={cn("w-fit", statusBadgeClass[status])}
+      aria-label={`Estado: ${statusLabels[status]}`}
+    >
       {statusLabels[status]}
     </Badge>
   )

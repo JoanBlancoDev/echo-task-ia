@@ -12,16 +12,12 @@ import { ChevronLeft } from "lucide-react";
 import { GithubOAuthButton } from "./GithubOAuthButton";
 import { Label } from "../ui/label";
 import {
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
-  PASSWORD_REQUIREMENTS,
   emailSchema,
-  passwordSchema,
 } from "@/lib/auth/password-policy";
 
 const schema = z.object({
   email: emailSchema(),
-  password: passwordSchema(),
+  password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -38,7 +34,6 @@ export function LoginForm() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [showPasswordInfo, setShowPasswordInfo] = useState(false);
   const emailField = register("email");
   const passwordField = register("password");
 
@@ -80,33 +75,11 @@ export function LoginForm() {
             placeholder="******"
             id="password"
             autoComplete="current-password"
-            minLength={PASSWORD_MIN_LENGTH}
-            maxLength={PASSWORD_MAX_LENGTH}
+            required
             aria-invalid={!!errors.password}
             className="w-full"
-            onFocus={() => {
-              setError(null);
-              setShowPasswordInfo(true);
-            }}
-            onBlur={(e) => {
-              passwordField.onBlur(e);
-              setShowPasswordInfo(false);
-            }}
-            onChange={(e) => {
-              passwordField.onChange(e);
-              setShowPasswordInfo(true);
-            }}
+            onFocus={() => setError(null)}
           />
-          {showPasswordInfo && (
-            <div className="text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded p-2 mt-1">
-              <p>La contraseña debe tener:</p>
-              <ul className="list-disc ml-5">
-                {PASSWORD_REQUIREMENTS.map((requirement) => (
-                  <li key={requirement}>{requirement}</li>
-                ))}
-              </ul>
-            </div>
-          )}
           {errors.password && (
             <p className="text-sm text-red-500">{errors.password.message}</p>
           )}

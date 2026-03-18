@@ -1,47 +1,98 @@
 # EchoTask AI
 
-Micro-SaaS para capturar notas de voz y convertirlas en tickets técnicos estructurados con IA.
+EchoTask AI es una app tipo micro-SaaS para convertir notas de voz en tickets técnicos estructurados con IA.
+
+## Demo
+
+- Live demo: `https://TU-DOMINIO.vercel.app`
+- Video demo (opcional): `https://www.loom.com/share/TU_VIDEO`
+
+---
+
+## Capturas / GIFs (placeholders para portfolio)
+
+> Reemplaza estas rutas con tus imágenes reales cuando las subas.
+
+### 1) Home
+
+![Home - EchoTask AI](./public/assets/readme/home-placeholder.png)
+
+### 2) Login / Signup
+
+![Auth - EchoTask AI](./public/assets/readme/auth-placeholder.png)
+
+### 3) Dashboard (lista de tickets)
+
+![Dashboard - EchoTask AI](./public/assets/readme/dashboard-placeholder.png)
+
+### 4) Grabación de audio
+
+![Recorder GIF - EchoTask AI](./public/assets/readme/recorder-placeholder.gif)
+
+### 5) Detalle de ticket + edición
+
+![Task detail - EchoTask AI](./public/assets/readme/task-detail-placeholder.png)
+
+### 6) Reproceso con IA (opcional)
+
+![Reprocess GIF - EchoTask AI](./public/assets/readme/reprocess-placeholder.gif)
+
+---
 
 ## Stack
 
-- Next.js (App Router) + React + TypeScript
+- Next.js 16 (App Router) + React 19 + TypeScript
 - Tailwind CSS + shadcn/ui
 - Prisma + PostgreSQL (Supabase)
 - Supabase Auth + Storage
-- Gemini (Google Generative AI)
-- Zod para validación de salida IA
+- Google Gemini (procesamiento de audio)
+- Zod + React Hook Form
+- Upstash Redis (`@upstash/ratelimit`) para rate limiting
 
-## Flujo principal
+---
 
-1. Usuario graba audio desde dashboard.
-2. Cliente envía `FormData` con audio a Server Action.
-3. Servidor sube audio a Supabase Storage.
-4. Servidor procesa el buffer con Gemini.
-5. Respuesta de IA se valida con Zod.
-6. Se crea `Task` en Prisma.
-7. Dashboard refresca y muestra ticket.
+## Funcionalidades principales
 
-## Requisitos
+- Autenticación (email/password + OAuth GitHub)
+- Grabación y subida de audio
+- Extracción de ticket con IA (título, descripción, prioridad, categoría)
+- Fallback si falla IA (el usuario no pierde su nota)
+- Dashboard con paginación y detalle de task
+- Edición y eliminación de task
+- Reproceso de task pendiente
+- Control de créditos por usuario
+- Rate limiting en acciones sensibles (`auth`, `create task`, `reprocess`)
+
+---
+
+## Flujo funcional
+
+1. Usuario graba audio desde el dashboard.
+2. El cliente envía `FormData` a una Server Action.
+3. El servidor valida límites y sesión.
+4. El audio se sube a Supabase Storage.
+5. Se procesa el buffer con Gemini.
+6. Se guarda el task en la base de datos.
+7. Se actualiza dashboard y créditos.
+
+---
+
+## Setup local
+
+### Requisitos
 
 - Bun instalado (`bun --version`)
 - Proyecto Supabase (DB + Auth + Storage)
 - API key de Gemini habilitada
 
-## Setup local
-
-1. Instalar dependencias:
+### Instalación
 
 ```bash
 bun install
-```
-
-2. Crear variables de entorno desde plantilla:
-
-```bash
 cp .env.example .env
 ```
 
-3. Completar `.env`:
+Completa variables en `.env`:
 
 - `DATABASE_URL`
 - `DIRECT_URL`
@@ -52,61 +103,47 @@ cp .env.example .env
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL` (recomendado: `gemini-2.5-flash`)
 - `NEXT_PUBLIC_APP_URL` (ej: `http://localhost:3000`)
-
-4. Prisma:
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+- `RATE_LIMIT_PREFIX` (opcional, default: `echotask`)
 
 ```bash
 bunx prisma generate
 bunx prisma migrate dev
-```
-
-5. Ejecutar proyecto:
-
-```bash
 bun dev
 ```
 
-Abrir [http://localhost:3000](http://localhost:3000).
+App local: [http://localhost:3000](http://localhost:3000)
 
-## Supabase mínimo requerido
+---
 
-- Auth habilitado.
-- Bucket de storage creado (por defecto `task-audios`).
-- Políticas de acceso coherentes con upload/download desde servidor.
+## Deploy en Vercel
 
-## UX y feedback actual
+1. Conecta el repo a Vercel.
+2. Define variables de entorno de **PROD** en Vercel.
+3. Build recomendado:
+   - Install Command: `bun install`
+   - Build Command: `bunx prisma generate && bun run build`
+4. Asegura que `NEXT_PUBLIC_APP_URL` apunte al dominio de producción.
+5. Verifica que en Supabase Auth estén configuradas las URLs de redirect correctas (site URL + callbacks).
 
-- Error de micrófono (permiso/navegador) en el componente de grabación.
-- Error de Storage/Session/Audio inválido con mensaje persistente y toast.
-- Advertencia de IA (Gemini) con fallback automático de task.
-- Éxito confirmado en UI y refresh del dashboard.
+### Separación DEV y PROD (recomendado)
 
-## Troubleshooting
+- Usa **2 proyectos Supabase**: uno para `dev`, otro para `prod`.
+- Usa **2 sets de variables** en Vercel (Preview/Development vs Production).
+- Nunca compartas `DATABASE_URL` ni `SUPABASE_SERVICE_ROLE_KEY` entre entornos.
 
-### No sube el audio
+---
 
-- Verifica `SUPABASE_STORAGE_BUCKET`.
-- Revisa `SUPABASE_SERVICE_ROLE_KEY`.
-- Confirma existencia del bucket en Supabase.
+## Seguridad y operación
 
-### Gemini falla o sin cuota
+- RLS habilitado en tablas principales (`User`, `Task`) con políticas por dueño.
+- Rate limiting en Server Actions sensibles.
+- `.env*` ignorado por git.
+- Si una clave se expone: rotación inmediata (ver [SECURITY_ROTATION.md](SECURITY_ROTATION.md)).
 
-- Verifica `GEMINI_API_KEY`.
-- Confirma billing/cuota en Google AI Studio.
-- Ajusta `GEMINI_MODEL` a un modelo disponible.
+---
 
-### Error de sesión
+## Roadmap
 
-- Cierra sesión y vuelve a autenticar.
-- Verifica variables de Supabase cliente (`NEXT_PUBLIC_*`).
-
-## Seguridad (importante)
-
-- `.env*` está ignorado por git.
-- Nunca commitear claves reales.
-- Si una clave se expuso, rotarla inmediatamente (Supabase + Gemini).
-- Ver [SECURITY_ROTATION.md](SECURITY_ROTATION.md).
-
-## Próximos pasos
-
-Ver [PLANNER.md](PLANNER.md).
+Pendientes y mejoras en [PLANNER.md](PLANNER.md).

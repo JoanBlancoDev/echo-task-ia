@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, CheckCircle2, Info } from "lucide-react"
+import { AlertCircle, CheckCircle2, Info, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMemo, useState, useTransition } from "react"
 
@@ -10,6 +10,7 @@ import {
 } from "@/actions/tasks/create-task-from-audio-action"
 import { RecordButton } from "@/components/dashboard/RecordButton"
 import { useToast } from "@/components/ui/toast"
+import { AUDIO_MAX_DURATION_SECONDS, AUDIO_MAX_SIZE_BYTES } from "@/lib/audio-limits"
 
 const initialState: CreateTaskFromAudioState = {
   error: null,
@@ -19,6 +20,8 @@ const initialState: CreateTaskFromAudioState = {
 
 interface DashboardRecorderProps {
   onCreated?: () => void
+  /** Créditos actuales del usuario; se actualiza tras cada grabación exitosa */
+  initialCredits: number
 }
 
 type FeedbackKind = "success" | "warning" | "error"
@@ -31,6 +34,22 @@ type RecorderFeedback = {
 
 function classifyError(message: string): RecorderFeedback {
   const normalized = message.toLowerCase()
+
+  if (normalized.includes("créditos") || normalized.includes("creditos") || normalized.includes("límite de tickets")) {
+    return {
+      kind: "error",
+      title: "Sin créditos disponibles",
+      message,
+    }
+  }
+
+  if (normalized.includes("supera el límite") || normalized.includes("tamaño") || normalized.includes("segundos")) {
+    return {
+      kind: "error",
+      title: "Audio demasiado largo o pesado",
+      message,
+    }
+  }
 
   if (normalized.includes("bucket") || normalized.includes("storage") || normalized.includes("subir el audio")) {
     return {
@@ -81,11 +100,12 @@ function classifyWarning(message: string): RecorderFeedback {
   }
 }
 
-export function DashboardRecorder({ onCreated }: DashboardRecorderProps) {
+export function DashboardRecorder({ onCreated, initialCredits }: DashboardRecorderProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { pushToast, pushError } = useToast()
   const [feedback, setFeedback] = useState<RecorderFeedback | null>(null)
+  const [credits, setCredits] = useState(initialCredits)
 
   const feedbackStyles = useMemo(() => {
     if (!feedback) {
@@ -102,6 +122,12 @@ export function DashboardRecorder({ onCreated }: DashboardRecorderProps) {
 
     return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
   }, [feedback])
+
+  const creditsColor = credits <= 2
+    ? "text-red-500 dark:text-red-400"
+    : credits <= 5
+      ? "text-amber-500 dark:text-amber-400"
+      : "text-emerald-600 dark:text-emerald-400"
 
   const handleRecorded = (audioBlob: Blob, durationSeconds: number) => {
     startTransition(async () => {
@@ -125,6 +151,11 @@ export function DashboardRecorder({ onCreated }: DashboardRecorderProps) {
         return
       }
 
+      // Actualizar créditos localmente si el servidor los devuelve
+      if (typeof result.creditsLeft === "number") {
+        setCredits(result.creditsLeft)
+      }
+
       if (result.warning) {
         const uiWarning = classifyWarning(result.warning)
         setFeedback(uiWarning)
@@ -142,11 +173,41 @@ export function DashboardRecorder({ onCreated }: DashboardRecorderProps) {
     })
   }
 
+  const isOutOfCredits = credits <= 0
+
   return (
     <div className="space-y-3">
-      <RecordButton onRecorded={handleRecorded} disabled={isPending} />
+      {/* Indicador de créditos */}
+      <div className="flex items-center justify-center gap-1.5 text-sm">
+        <Zap className={`size-4 ${creditsColor}`} />
+        <span className={`font-medium ${creditsColor}`}>{credits}</span>
+        <span className="text-muted-foreground">
+          {credits === 1 ? "crédito disponible" : "créditos disponibles"}
+        </span>
+        <span className="text-muted-foreground/60 text-xs ml-1">
+          · máx. {AUDIO_MAX_DURATION_SECONDS}s / {AUDIO_MAX_SIZE_BYTES / (1024 * 1024)}MB por nota
+        </span>
+      </div>
+
+      <RecordButton
+        onRecorded={handleRecorded}
+        disabled={isPending || isOutOfCredits}
+        maxDurationSeconds={AUDIO_MAX_DURATION_SECONDS}
+      />
 
       {isPending ? <p className="text-center text-sm text-muted-foreground">Subiendo audio...</p> : null}
+
+      {isOutOfCredits && !feedback ? (
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200" role="alert">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 size-4" />
+            <div>
+              <p className="font-semibold">Sin créditos disponibles</p>
+              <p>Has alcanzado el límite de tickets en tu plan gratuito.</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {feedback ? (
         <div className={`rounded-md border px-4 py-3 text-sm ${feedbackStyles}`} role="status" aria-live="polite">

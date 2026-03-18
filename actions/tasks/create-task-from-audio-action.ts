@@ -3,7 +3,9 @@
 import { Priority, Status } from "@prisma/client"
 
 import { extractTaskFromAudioWithGemini, mapGeminiErrorToUserMessage } from "@/lib/ai/task-from-audio"
+import { validateAudioLimits } from "@/lib/audio-limits"
 import { db } from "@/lib/db"
+import { checkRateLimit, getRateLimitErrorMessage } from "@/lib/rate-limit"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
@@ -12,6 +14,8 @@ export type CreateTaskFromAudioState = {
   success: boolean
   taskId?: string
   warning?: string | null
+  /** Créditos restantes del usuario tras la operación (solo presente en éxito) */
+  creditsLeft?: number
 }
 
 const AUDIO_BUCKET = process.env.SUPABASE_STORAGE_BUCKET?.trim() || "task-audios"
@@ -36,10 +40,18 @@ export async function createTaskFromAudioAction(
   const durationRaw = formData.get("duration")
   const duration = Number(durationRaw)
 
+  // ── 1. Validación básica del archivo ───────────────────────────────────────
   if (!(audio instanceof File) || audio.size === 0) {
     return { error: "Audio inválido", success: false, warning: null }
   }
 
+  // ── 2. Validación de límites de tamaño y duración ──────────────────────────
+  const limitError = validateAudioLimits(audio, duration)
+  if (limitError) {
+    return { error: limitError, success: false, warning: null }
+  }
+
+  // ── 3. Autenticación ───────────────────────────────────────────────────────
   const supabase = await createSupabaseServerClient()
   const {
     data: { user },
@@ -50,6 +62,22 @@ export async function createTaskFromAudioAction(
     return { error: "Sesión inválida. Inicia sesión nuevamente.", success: false, warning: null }
   }
 
+  const createTaskRateLimit = await checkRateLimit({
+    bucket: "create-task",
+    limit: 6,
+    window: "1 m",
+    identifier: user.id,
+  })
+
+  if (!createTaskRateLimit.success) {
+    return {
+      error: getRateLimitErrorMessage(createTaskRateLimit.reset),
+      success: false,
+      warning: null,
+    }
+  }
+
+  // ── 4. Obtener / crear usuario local y verificar créditos ─────────────────
   const localUser = await db.user.upsert({
     where: { externalId: user.id },
     update: {
@@ -62,10 +90,20 @@ export async function createTaskFromAudioAction(
       email: user.email,
       name: user.user_metadata?.name ?? null,
       avatarUrl: user.user_metadata?.avatar_url ?? null,
+      // credits ya tiene @default(10) en el schema
     },
-    select: { id: true },
+    select: { id: true, credits: true },
   })
 
+  if (localUser.credits <= 0) {
+    return {
+      error: "Sin créditos disponibles. Has alcanzado el límite de tickets en tu plan gratuito.",
+      success: false,
+      warning: null,
+    }
+  }
+
+  // ── 5. Subir audio a Supabase Storage ─────────────────────────────────────
   const extension = getFileExtension(audio.type)
   const filePath = `${localUser.id}/${crypto.randomUUID()}.${extension}`
 
@@ -85,6 +123,7 @@ export async function createTaskFromAudioAction(
     }
   }
 
+  // ── 6. Procesar audio con Gemini ───────────────────────────────────────────
   let warning: string | null = null
 
   let aiData: {
@@ -113,22 +152,36 @@ export async function createTaskFromAudioAction(
     warning = `${reason} Se creó el task base en modo fallback (Importante/Pendiente/Task).`
   }
 
-  const task = await db.task.create({
-    data: {
-      userId: localUser.id,
-      title: aiData?.title ?? `Nota de voz ${new Date().toLocaleString("es-ES")}`,
-      description:
-        aiData?.description ??
-        "Audio recibido correctamente. Pendiente de transcripción y estructuración con IA.",
-      category: aiData?.category ?? "Task",
-      priority: aiData?.priority ?? Priority.MEDIUM,
-      status: aiData ? Status.COMPLETED : Status.PENDING,
-      audioUrl: `sb://${AUDIO_BUCKET}/${filePath}`,
-      transcription: aiData?.transcription ?? null,
-      duration: Number.isFinite(duration) ? Math.max(0, Math.round(duration)) : null,
-    },
-    select: { id: true },
-  })
+  // ── 7. Guardar task y decrementar crédito en una transacción atómica ───────
+  const [task, updatedUser] = await db.$transaction([
+    db.task.create({
+      data: {
+        userId: localUser.id,
+        title: aiData?.title ?? `Nota de voz ${new Date().toLocaleString("es-ES")}`,
+        description:
+          aiData?.description ??
+          "Audio recibido correctamente. Pendiente de transcripción y estructuración con IA.",
+        category: aiData?.category ?? "Task",
+        priority: aiData?.priority ?? Priority.MEDIUM,
+        status: aiData ? Status.COMPLETED : Status.PENDING,
+        audioUrl: `sb://${AUDIO_BUCKET}/${filePath}`,
+        transcription: aiData?.transcription ?? null,
+        duration: Number.isFinite(duration) ? Math.max(0, Math.round(duration)) : null,
+      },
+      select: { id: true },
+    }),
+    db.user.update({
+      where: { id: localUser.id },
+      data: { credits: { decrement: 1 } },
+      select: { credits: true },
+    }),
+  ])
 
-  return { error: null, success: true, taskId: task.id, warning }
+  return {
+    error: null,
+    success: true,
+    taskId: task.id,
+    warning,
+    creditsLeft: updatedUser.credits,
+  }
 }

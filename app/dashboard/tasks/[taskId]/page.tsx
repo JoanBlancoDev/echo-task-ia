@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 
 import { TaskActionControls } from "@/components/dashboard/TaskActionControls"
+import { EditTaskForm } from "@/components/dashboard/EditTaskForm"
 import { PriorityBadge, StatusBadge } from "@/components/dashboard/TaskBadges"
 import { DashboardTopBar } from "@/components/dashboard/DashboardTopBar"
 import { Badge } from "@/components/ui/badge"
@@ -97,6 +98,16 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
           </CardContent>
         </Card>
       ) : null}
+
+      <EditTaskForm
+        taskId={task.id}
+        initialValues={{
+          title: task.title,
+          description: task.description ?? "",
+          priority: task.priority,
+          category: (task.category as "Bug" | "Feature" | "Refactor" | "Task") ?? "Task",
+        }}
+      />
 
       <TaskActionControls taskId={task.id} status={task.status} layout="inline" redirectOnDeleteTo="/dashboard" />
     </main>
