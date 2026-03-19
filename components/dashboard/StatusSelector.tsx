@@ -1,13 +1,13 @@
 "use client"
 
-import { Status } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 
 import { updateTaskStatusAction } from "@/actions/tasks/update-task-status-action"
 import { useToast } from "@/components/ui/toast"
+import { type TaskStatus } from "@/lib/task-enums"
 
-const STATUS_OPTIONS: { value: Status; label: string }[] = [
+const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "PENDING", label: "Pendiente" },
   { value: "IN_PROGRESS", label: "En progreso" },
   { value: "COMPLETED", label: "Completado" },
@@ -16,7 +16,7 @@ const STATUS_OPTIONS: { value: Status; label: string }[] = [
 
 interface StatusSelectorProps {
   taskId: string
-  currentStatus: Status
+  currentStatus: TaskStatus
 }
 
 export function StatusSelector({ taskId, currentStatus }: StatusSelectorProps) {
@@ -25,7 +25,7 @@ export function StatusSelector({ taskId, currentStatus }: StatusSelectorProps) {
   const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatus = e.target.value as Status
+    const newStatus = e.target.value as TaskStatus
     if (newStatus === currentStatus) return
 
     startTransition(async () => {

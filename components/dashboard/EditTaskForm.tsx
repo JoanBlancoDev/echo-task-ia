@@ -1,6 +1,5 @@
 "use client"
 
-import { Priority } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
@@ -13,11 +12,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/toast"
+import { TASK_PRIORITIES, type TaskPriority } from "@/lib/task-enums"
 
 const schema = z.object({
   title: z.string().trim().min(3, "Al menos 3 caracteres").max(120, "Máximo 120"),
   description: z.string().trim().min(10, "Al menos 10 caracteres").max(4000, "Máximo 4000"),
-  priority: z.nativeEnum(Priority),
+  priority: z.enum(TASK_PRIORITIES),
   category: z.enum(["Bug", "Feature", "Refactor", "Task"]),
 })
 
@@ -26,7 +26,7 @@ interface EditTaskFormProps {
   initialValues: UpdateTaskInput
 }
 
-const PRIORITY_LABELS: Record<Priority, string> = {
+const PRIORITY_LABELS: Record<TaskPriority, string> = {
   LOW: "P2 · Normal",
   MEDIUM: "P1 · Importante",
   HIGH: "P0 · Alta",
@@ -150,7 +150,7 @@ export function EditTaskForm({ taskId, initialValues }: EditTaskFormProps) {
               aria-invalid={!!errors.priority}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {(Object.keys(PRIORITY_LABELS) as Priority[]).map((p) => (
+              {TASK_PRIORITIES.map((p) => (
                 <option key={p} value={p}>
                   {PRIORITY_LABELS[p]}
                 </option>

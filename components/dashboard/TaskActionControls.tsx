@@ -1,6 +1,5 @@
 "use client"
 
-import { Status } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, useTransition } from "react"
 
@@ -8,10 +7,11 @@ import { deleteTaskAction } from "@/actions/tasks/delete-task-action"
 import { reprocessTaskAction } from "@/actions/tasks/reprocess-task-action"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
+import { type TaskStatus } from "@/lib/task-enums"
 
 interface TaskActionControlsProps {
   taskId: string
-  status: Status
+  status: TaskStatus
   layout?: "grid" | "inline"
   redirectOnDeleteTo?: string
 }
